@@ -1,7 +1,6 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import os
 
 # Function to load and prepare data
 def load_data(uploaded_file):
@@ -75,6 +74,92 @@ def display_distribution_by_grade(filtered_df, question, question_text):
                        barmode='group')
     return fig_grade  # Return the figure instead of displaying it here
 
+
+# Custom function to convert survey time to minutes
+def convert_to_minutes(time_str):
+    """Converts survey time from 'HH:MM:SS' to total minutes."""
+    minutes, seconds, milliseconds = map(int, time_str.split(':'))
+    total_minutes = minutes + seconds / 60 + milliseconds/3600
+    return total_minutes
+
+# Function to display summary plots
+def display_summary_plots(df):
+    # Summary: Total Students
+    total_students = df.shape[0]
+    
+    # Calculate total male and female students
+    gender_counts = df['studentGender'].value_counts()
+    total_male = gender_counts.get('Male', 0)
+    total_female = gender_counts.get('Female', 0)
+
+    # Calculate percentages
+    male_percentage = (total_male / total_students) * 100 if total_students > 0 else 0
+    female_percentage = (total_female / total_students) * 100 if total_students > 0 else 0
+
+    # Display total students and gender percentages on the same line
+    st.subheader("Total Students and Gender Distribution")
+    st.write(f"Total Students: {total_students} | Male: {total_male} ({male_percentage:.2f}%) | Female: {total_female} ({female_percentage:.2f}%)")
+    
+    # Distribution of Ages
+    st.subheader("Distribution of Ages")
+    age_distribution = df.groupby(['studentAge', 'school']).size().reset_index(name='Count')
+    fig_age_dist = px.bar(age_distribution, x='studentAge', y='Count', color='school',
+                           title='Age Distribution of Students',
+                           labels={'Count': 'Number of Students', 'studentAge': 'Age'},
+                           barmode='group')
+    st.plotly_chart(fig_age_dist)
+
+    # Distribution of Grades
+    st.subheader("Distribution of Grades")
+    grade_distribution = df.groupby(['grade', 'school']).size().reset_index(name='Count')
+    fig_grade_dist = px.bar(grade_distribution, x='grade', y='Count', color='school',
+                             title='Grade Distribution of Students',
+                             labels={'Count': 'Number of Students', 'grade': 'Grade'},
+                             barmode='group')
+    st.plotly_chart(fig_grade_dist)
+
+    # Distribution by School
+    st.subheader("Distribution by School")
+    school_distribution = df['school'].value_counts().reset_index()
+    school_distribution.columns = ['School', 'Count']
+    fig_school_dist = px.pie(school_distribution, names='School', values='Count',
+                              title='Distribution of Students by School')
+    st.plotly_chart(fig_school_dist)
+
+    # Gender Distribution by Grade
+    st.subheader("Gender Distribution by Grade")
+    gender_by_grade = df.groupby(['grade', 'studentGender']).size().reset_index(name='Count')
+    fig_gender_grade = px.bar(gender_by_grade, x='grade', y='Count', color='studentGender',
+                               title='Gender Distribution by Grade',
+                               labels={'Count': 'Number of Students', 'grade': 'Grade'},
+                               barmode='group')
+    st.plotly_chart(fig_gender_grade)
+
+    # Survey Time Distribution
+    st.subheader("Survey Completion Time Distribution")
+    # Convert 'elapsedTime' using the custom function
+    df['ElapsedMinutes'] = df['elapsedTime'].apply(convert_to_minutes)
+
+    # Create histogram for survey times grouped by school
+    fig_time_dist = px.histogram(df, x='ElapsedMinutes', color='school', 
+                                  title='Distribution of Survey Completion Times (in minutes)',
+                                  labels={'ElapsedMinutes': 'Time Taken (minutes)'},
+                                  nbins=50)
+    st.plotly_chart(fig_time_dist)
+
+    # Box plot for survey times
+    st.subheader("Box Plot of Survey Completion Times")
+    fig_box_plot = px.box(df, x='school', y='ElapsedMinutes',
+                           title='Box Plot of Survey Completion Times by School',
+                           labels={'ElapsedMinutes': 'Time Taken (minutes)', 'school': 'School'})
+    st.plotly_chart(fig_box_plot)
+
+    # Optionally, display the average survey time
+    avg_time = df['ElapsedMinutes'].mean()
+    avg_minutes = int(avg_time)
+    avg_seconds = int((avg_time - avg_minutes) * 60)
+    st.write(f"Average Survey Time: {avg_minutes} minutes {avg_seconds} seconds")
+
 # Function to display heatmap for FL7 and FL9A
 def display_language_heatmap(filtered_df, question_1, question_2, question_dict):
     # Clean response columns
@@ -111,7 +196,9 @@ def display_language_heatmap(filtered_df, question_1, question_2, question_dict)
         coloraxis_colorbar=dict(
             title="Number of Students",
             ticks="outside"
-        )
+        ),
+        xaxis=dict(tickfont=dict(size=10)),  # Adjust font size for x-axis labels
+        yaxis=dict(tickfont=dict(size=10)),  # Adjust font size for y-axis labels
     )
     
     return fig_heatmap
@@ -127,91 +214,125 @@ def display_language_distribution(filtered_df, question, question_text):
                       labels={'Count': 'Number of Students', question: 'Language'},
                       color=question)
     return fig_lang
-
-# Path to the CSV file
-csv_file_path = 'student_survey_data.csv'  # Update this to your actual CSV file path
-
-# Load the data
-df, question_dict = load_data(csv_file_path)
-
-# Visualize the selected school data (all schools by default)
-filtered_df = df  # Load data for both schools
-
 # Sidebar for navigation
 st.sidebar.title("Select Options")
-# Removed file uploader, since we're loading directly from the file path
+# uploaded_file = st.sidebar.file_uploader("Upload your student survey CSV file", type="csv")
+uploaded_file = 'student_survey_records.csv'
+# Load the data if a file is uploaded
+if uploaded_file is not None:
+    df, question_dict = load_data(uploaded_file)
 
-# Sidebar for selecting visualization
-visualization_options = st.sidebar.radio("Select Question Set", 
-    ("Read at home vs Read to at home", "Language at Home vs Language at School", "Other Question Set 1", "Other Question Set 2"))
+    # Visualize the selected school data (all schools by default)
+    filtered_df = df  # Load data for both schools
 
-# Define questions based on the selected option
-if visualization_options == "Read at home vs Read to at home":
-    question_1 = 'FL6_cleaned1'
-    question_2 = 'FL6_cleaned2'
-    
-    # Page title for the current visualization
-    st.header("Read at Home vs Read to at Home")
+    # Sidebar for selecting visualization
+    visualization_options = st.sidebar.radio("Select Question Set", 
+        ("Summary", "Read at home vs Read to at home", "Language at Home vs Language at School", "Other Question Set 1", "Other Question Set 2"))
 
-    # Display heatmap for the selected questions
-    st.subheader("Heatmap of Responses - Number of Students")
-    
-    # Dropdown for filtering by school for the heatmap
-    selected_schools_heatmap = st.selectbox("Select Schools for Heatmap", 
-        options=["Both Schools"] + list(df['school'].unique()), key='heatmap_dropdown')
-    
-    # Filter data based on selected schools for heatmap
-    if selected_schools_heatmap != "Both Schools":
-        filtered_df = filtered_df[filtered_df['school'] == selected_schools_heatmap]
+    if visualization_options == "Summary":
+        st.header("Survey Summary")
+        display_summary_plots(filtered_df)
 
-    fig_heatmap = display_heatmap(filtered_df, question_1, question_2, question_dict)
-    st.plotly_chart(fig_heatmap)
+    elif visualization_options == "Read at home vs Read to at home":
+        question_1 = 'FL6_cleaned1'
+        question_2 = 'FL6_cleaned2'
+        
+        # Page title for the current visualization
+        st.header("Read at Home vs Read to at Home")
 
-    # Distribution by age
-    st.subheader("Distribution of Responses by Age")
-    
-    # Dropdown for filtering by school for age distribution
-    selected_schools_age = st.selectbox("Select Schools for Age Distribution", 
-        options=["Both Schools"] + list(df['school'].unique()), key='age_dropdown')
-    
-    # Filter data based on selected schools for age distribution
-    if selected_schools_age != "Both Schools":
-        filtered_age_df = df[df['school'] == selected_schools_age]
-    else:
-        filtered_age_df = filtered_df  # Use filtered_df for both schools
+        # Display heatmap for the selected questions
+        st.subheader("Heatmap of Responses - Number of Students")
+        
+        # Dropdown for filtering by school for the heatmap
+        selected_schools_heatmap = st.selectbox("Select Schools for Heatmap", 
+            options=["Both Schools"] + list(df['school'].unique()), key='heatmap_dropdown')
+        
+        # Filter data based on selected schools for heatmap
+        if selected_schools_heatmap != "Both Schools":
+            filtered_df = filtered_df[filtered_df['school'] == selected_schools_heatmap]
 
-    # Dropdown to select between Question 1 and Question 2 for age distribution
-    selected_question_age = st.selectbox("Select Question for Age Distribution",
-        options=[question_dict[question_1], question_dict[question_2]], key='age_question_dropdown')
-    
-    # Find the original question identifier based on the selected text
-    question_key_age = question_1 if selected_question_age == question_dict[question_1] else question_2
+        fig_heatmap = display_heatmap(filtered_df, question_1, question_2, question_dict)
+        st.plotly_chart(fig_heatmap)
 
-    fig_age = display_distribution_by_age(filtered_age_df, question_key_age, selected_question_age)
-    st.plotly_chart(fig_age)
+        # Distribution by age
+        st.subheader("Distribution of Responses by Age")
+        
+        # Dropdown for filtering by school for age distribution
+        selected_schools_age = st.selectbox("Select Schools for Age Distribution", 
+            options=["Both Schools"] + list(df['school'].unique()), key='age_dropdown')
+        
+        # Filter data based on selected schools for age distribution
+        if selected_schools_age != "Both Schools":
+            filtered_age_df = df[df['school'] == selected_schools_age]
+        else:
+            filtered_age_df = filtered_df  # Use filtered_df for both schools
 
-    # Distribution by grade
-    st.subheader("Distribution of Responses by Grade")
-    
-    # Dropdown for filtering by school for grade distribution
-    selected_schools_grade = st.selectbox("Select Schools for Grade Distribution", 
-        options=["Both Schools"] + list(df['school'].unique()), key='grade_dropdown')
-    
-    # Filter data based on selected schools for grade distribution
-    if selected_schools_grade != "Both Schools":
-        filtered_grade_df = df[df['school'] == selected_schools_grade]
-    else:
-        filtered_grade_df = filtered_df  # Use filtered_df for both schools
+        # Dropdown to select between Question 1 and Question 2 for age distribution
+        selected_question_age = st.selectbox("Select Question for Age Distribution",
+            options=[question_dict[question_1], question_dict[question_2]], key='age_question_dropdown')
+        
+        # Find the original question identifier based on the selected text
+        question_key_age = question_1 if selected_question_age == question_dict[question_1] else question_2
 
-    # Dropdown to select between Question 1 and Question 2 for grade distribution
-    selected_question_grade = st.selectbox("Select Question for Grade Distribution",
-        options=[question_dict[question_1], question_dict[question_2]], key='grade_question_dropdown')
-    
-    # Find the original question identifier based on the selected text
-    question_key_grade = question_1 if selected_question_grade == question_dict[question_1] else question_2
+        fig_age = display_distribution_by_age(filtered_age_df, question_key_age, selected_question_age)
+        st.plotly_chart(fig_age)
 
-    fig_grade = display_distribution_by_grade(filtered_grade_df, question_key_grade, selected_question_grade)
-    st.plotly_chart(fig_grade)
+        # Distribution by grade
+        st.subheader("Distribution of Responses by Grade")
+        
+        # Dropdown for filtering by school for grade distribution
+        selected_schools_grade = st.selectbox("Select Schools for Grade Distribution", 
+            options=["Both Schools"] + list(df['school'].unique()), key='grade_dropdown')
+        
+        # Filter data based on selected schools for grade distribution
+        if selected_schools_grade != "Both Schools":
+            filtered_grade_df = filtered_df[filtered_df['school'] == selected_schools_grade]
+        else:
+            filtered_grade_df = filtered_df  # Use filtered_df for both schools
 
-# Add other visualizations for different question sets as needed...
+        # Dropdown to select between Question 1 and Question 2 for grade distribution
+        selected_question_grade = st.selectbox("Select Question for Grade Distribution",
+            options=[question_dict[question_1], question_dict[question_2]], key='grade_question_dropdown')
+        
+        # Find the original question identifier based on the selected text
+        question_key_grade = question_1 if selected_question_grade == question_dict[question_1] else question_2
 
+        fig_grade = display_distribution_by_grade(filtered_grade_df, question_key_grade, selected_question_grade)
+        st.plotly_chart(fig_grade)
+
+    elif visualization_options == "Language at Home vs Language at School":
+        question_1 = 'FL7'
+        question_2 = 'FL9A'
+        question_1_text = question_dict[question_1]
+        question_2_text = question_dict[question_2]
+        
+        # Page title for the current visualization
+        st.header("Language at Home vs Language at School")
+
+        # Display heatmap for the selected language questions
+        st.subheader("Heatmap of Language Responses - Number of Students")
+        
+        # Dropdown for filtering by school for the heatmap
+        selected_schools_heatmap_lang = st.selectbox("Select Schools for Language Heatmap", 
+            options=["Both Schools"] + list(df['school'].unique()), key='language_heatmap_dropdown')
+        
+        # Filter data based on selected schools for heatmap
+        if selected_schools_heatmap_lang != "Both Schools":
+            filtered_df_lang = filtered_df[filtered_df['school'] == selected_schools_heatmap_lang]
+        else:
+            filtered_df_lang = filtered_df  # Use filtered_df for both schools
+
+        fig_heatmap_lang = display_language_heatmap(filtered_df_lang, question_1, question_2, question_dict)
+        st.plotly_chart(fig_heatmap_lang)
+
+        # Distribution of languages spoken at home
+        st.subheader("Distribution of Languages Spoken at Home")
+        
+        fig_lang_home = display_language_distribution(filtered_df_lang, question_1, question_dict[question_1])
+        st.plotly_chart(fig_lang_home)
+
+        # Distribution of languages spoken at school
+        st.subheader("Distribution of Languages Spoken at School")
+        
+        fig_lang_school = display_language_distribution(filtered_df_lang, question_2, question_dict[question_2])
+        st.plotly_chart(fig_lang_school)
