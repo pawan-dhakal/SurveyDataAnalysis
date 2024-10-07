@@ -216,8 +216,8 @@ def display_language_distribution(filtered_df, question, question_text):
     return fig_lang
 # Sidebar for navigation
 st.sidebar.title("Select Options")
-# uploaded_file = st.sidebar.file_uploader("Upload your student survey CSV file", type="csv")
-uploaded_file = 'student_survey_records.csv'
+uploaded_file = st.sidebar.file_uploader("Upload your student survey CSV file", type="csv")
+#uploaded_file = 'student_survey_records.csv'
 # Load the data if a file is uploaded
 if uploaded_file is not None:
     df, question_dict = load_data(uploaded_file)
