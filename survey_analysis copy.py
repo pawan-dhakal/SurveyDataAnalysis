@@ -26,36 +26,6 @@ def clean_data(df):
             df = df.dropna(subset=[col])
     return df
 
-# -------------------------
-# ANALYSIS PARAMETERS
-# -------------------------
-# drop FL27_cleaned5 for Siddhartha Kula Basic School and Ghami Solar Basic Schools because incorrect entries in the survey app
-numeracy_ids = ["FL23_cleaned1", "FL23_cleaned2", "FL23_cleaned3", "FL23_cleaned4", "FL23_cleaned5", \
-                 "FL23_cleaned6", "FL24_cleaned1", "FL24_cleaned2", "FL24_cleaned3", "FL24_cleaned4", "FL24_cleaned5", \
-                 "FL25_cleaned1", "FL25_cleaned2", "FL25_cleaned3", "FL25_cleaned4", "FL25_cleaned5", \
-                 "FL26", "FL26C", "FL27_cleaned1", "FL27_cleaned2", "FL27_cleaned3", "FL27_cleaned4",'FL27_cleaned5'] 
-
-# READING TASKS ENGLISH
-total_short_eng_words = 14
-total_long_eng_words = 61
-eng_reading_ids = ['FL13_cleaned','FL15','FL17',
-                         'FL19_cleaned','FL21B_cleaned1','FL21B_cleaned2','FL21B_cleaned3','FL21B_cleaned4','FL21B_cleaned5']
-
-long_eng_reading_ids = [eng_reading_ids[i] for i in [3,4,5,6,7,8]]
-short_eng_reading_ids = [eng_reading_ids[i] for i in [0,1,2]]
-
-# READING TASKS NEPALI
-total_short_nep_words = 16
-total_long_nep_words = 48
-total_long_nep_words_1 = 60
-nep_reading_ids = data = ["FL21G_cleaned", "FL21I", "FL21K", 
-                          "FL21O_cleaned", "FL22_cleaned1", "FL22_cleaned2", "FL22_cleaned3", "FL22_cleaned4", "FL22_cleaned5"]
-long_nep_reading_ids = [nep_reading_ids[i] for i in [3,4,5,6,7,8]]
-short_nep_reading_ids = [nep_reading_ids[i] for i in [0,1,2]]
-
-#for all schoools, the same English story (with names changed, no change in word count or question type)
-#for Siddhartha Kula Basic School and Ghami Solar Basic School, use story1 ids for Nepali 
-
 # ---------------------------
 # Numeracy Analysis Functions
 # ---------------------------
@@ -77,12 +47,10 @@ def numeracy_analysis(df, ids, school=None, printText=True):
     number_reading_qIDs = [ids[i] for i in [0, 1, 2, 3, 4, 5]]
     number_discrim_qIDs = [ids[i] for i in [6, 7, 8, 9, 10]]
     addition_qIDs = [ids[i] for i in [11, 12, 13, 14, 15]]
-    pattern_recog_qIDs = [ids[i] for i in [18, 19, 20, 21]] #not included "FL27_cleaned5"
+    pattern_recog_qIDs = [ids[i] for i in [18, 19, 20, 21]]
 
-    # If school is not "Ghami Solar Basic School" or "Siddhartha Kula Basic School", include "FL27_cleaned5"
-    if school not in ["Ghami Solar Basic School", "Siddhartha Kula Basic School"]:
-        pattern_recog_qIDs.append("FL27_cleaned5")
-            
+    
+    
     # Conditions for correct responses
     condition_reading = (df[number_reading_qIDs] == 'Correct').all(axis=1)
     condition_discrimination = (df[number_discrim_qIDs] == 'Correct').all(axis=1)
@@ -180,39 +148,14 @@ def numeracy_analysis(df, ids, school=None, printText=True):
 # ---------------------------
 # Reading Analysis Functions
 # ---------------------------
-def reading_analysis(df, ids, total_words_read=None, lang="English", school=None, printText=True):
+def reading_analysis(df, ids, total_words, lang="English", school=None, printText=True):
     """
     Perform reading analysis on the provided DataFrame.
     Returns breakdowns by overall performance, gender, age, and grade.
-    
-    Parameters:
-      - df: DataFrame containing survey records.
-      - ids: List of question IDs for the reading task.
-      - total_words_read: Optional override for the total number of words.
-      - lang: "English" or "Nepali"
-      - school: Filter by school (if provided)
-      - printText: Whether to print a completion message.
     """
-    # Filter by school if provided
     if school is not None and school.lower() != "all":
         df = df[df['school'] == school]
     
-    # Determine if using the new Nepali story (for all schools except Ghami Solar Basic School and Siddhartha Kula Basic School)
-    newNepaliStory = True
-    if school in ["Ghami Solar Basic School", "Siddhartha Kula Basic School"]:
-        newNepaliStory = False
-
-    # Set total_words: override if total_words_read provided; otherwise, use defaults.
-    if total_words_read is not None:
-        total_words = total_words_read
-    else:
-        if lang == "English":
-            total_words = 61
-        elif lang == "Nepali" and newNepaliStory:
-            total_words = 60
-        elif lang == "Nepali" and not newNepaliStory:
-            total_words = 48
-
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     
@@ -220,64 +163,24 @@ def reading_analysis(df, ids, total_words_read=None, lang="English", school=None
     genders = df['studentGender'].unique()
     
     required_correct_words = int(0.9 * total_words)  # 90% threshold
-
-    # The first ID (index 0) is assumed to hold the number of words read correctly.
     qID = ids[0]
-    df.loc[:, qID] = pd.to_numeric(df[qID], errors='coerce')
+    df[qID] = pd.to_numeric(df[qID], errors='coerce')
     df = df.dropna(subset=[qID])
     
-    # Define comprehension question groups based on language and story version.
-    if lang == "English":
-        # For English, use three literal questions and two inferential questions.
-        lit_comp_qIDs = [ids[i] for i in [0, 1, 2, 3]]
-        inf_comp_qIDs = [ids[i] for i in [0, 4, 5]]
-        condition_lit_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[lit_comp_qIDs[1]] == 'Correct') &
-            (df[lit_comp_qIDs[2]] == 'Correct') &
-            (df[lit_comp_qIDs[3]] == 'Correct')
-        )
-        condition_inf_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[inf_comp_qIDs[1]].astype(str) == 'Correct') &
-            (df[inf_comp_qIDs[2]].astype(str) == 'Correct')
-        )
-    elif lang == "Nepali" and not newNepaliStory:
-        # For Nepali old story, mimic the English structure.
-        lit_comp_qIDs = [ids[i] for i in [0, 1, 2, 3]]
-        inf_comp_qIDs = [ids[i] for i in [0, 4, 5]]
-        condition_lit_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[lit_comp_qIDs[1]] == 'Correct') &
-            (df[lit_comp_qIDs[2]] == 'Correct') &
-            (df[lit_comp_qIDs[3]] == 'Correct')
-        )
-        condition_inf_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[inf_comp_qIDs[1]].astype(str) == 'Correct') &
-            (df[inf_comp_qIDs[2]].astype(str) == 'Correct')
-        )
-    elif lang == "Nepali" and newNepaliStory:
-        # For Nepali new story, use one additional literal comprehension question and only one inferential question.
-        lit_comp_qIDs = [ids[i] for i in [0, 1, 2, 3, 4]]
-        inf_comp_qIDs = [ids[i] for i in [0, 5]]
-        condition_lit_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[lit_comp_qIDs[1]] == 'Correct') &
-            (df[lit_comp_qIDs[2]] == 'Correct') &
-            (df[lit_comp_qIDs[3]] == 'Correct') &
-            (df[lit_comp_qIDs[4]] == 'Correct')
-        )
-        condition_inf_comp = (
-            (df[qID] >= required_correct_words) &
-            (df[inf_comp_qIDs[1]].astype(str) == 'Correct')
-        )
+    # Define question groups for comprehension
+    lit_comp_qIDs = [ids[i] for i in [0, 1, 2, 3]]
+    inf_comp_qIDs = [ids[i] for i in [0, 4, 5]]
     
-    # Overall reading condition: words read plus both comprehension parts.
     condition_reading_story = df[qID] >= required_correct_words
+    condition_lit_comp = (df[qID] >= required_correct_words) & \
+                         (df[lit_comp_qIDs[1]] == 'Correct') & \
+                         (df[lit_comp_qIDs[2]] == 'Correct') & \
+                         (df[lit_comp_qIDs[3]] == 'Correct')
+    condition_inf_comp = (df[qID] >= required_correct_words) & \
+                         (df[inf_comp_qIDs[1]].astype(str) == 'Correct') & \
+                         (df[inf_comp_qIDs[2]].astype(str) == 'Correct')
     condition_all = condition_reading_story & condition_lit_comp & condition_inf_comp
     
-    # Helper: Calculate percentages by a grouping column.
     def calculate_percentage_by_group(condition, group_by_col):
         grouped = df.groupby(group_by_col)
         results = {}
@@ -351,15 +254,13 @@ def reading_analysis(df, ids, total_words_read=None, lang="English", school=None
                                  (sub_df[lit_comp_qIDs[3]] == 'Correct')).sum() / total_gender * 100),
                     "inferential": (((sub_df[qID] >= required_correct_words) & 
                                      (sub_df[inf_comp_qIDs[1]].astype(str) == 'Correct') & 
-                                     (sub_df[inf_comp_qIDs[2]].astype(str) == 'Correct') if len(inf_comp_qIDs) > 2 
-                                     else (sub_df[inf_comp_qIDs[1]].astype(str) == 'Correct')).sum() / total_gender * 100),
+                                     (sub_df[inf_comp_qIDs[2]].astype(str) == 'Correct')).sum() / total_gender * 100),
                     "foundational": (((sub_df[qID] >= required_correct_words) & 
                                       (sub_df[lit_comp_qIDs[1]] == 'Correct') & 
                                       (sub_df[lit_comp_qIDs[2]] == 'Correct') & 
                                       (sub_df[lit_comp_qIDs[3]] == 'Correct') &
-                                      ((sub_df[inf_comp_qIDs[1]].astype(str) == 'Correct') & 
-                                       (sub_df[inf_comp_qIDs[2]].astype(str) == 'Correct') if len(inf_comp_qIDs) > 2 
-                                       else (sub_df[inf_comp_qIDs[1]].astype(str) == 'Correct'))).sum() / total_gender * 100)
+                                      (sub_df[inf_comp_qIDs[1]].astype(str) == 'Correct') & 
+                                      (sub_df[inf_comp_qIDs[2]].astype(str) == 'Correct')).sum() / total_gender * 100)
                 }
         return results
     
@@ -520,6 +421,82 @@ def plot_numeracy_results(analysis_results):
         "fig_grade": grade_fig
     }
 
+def plot_reading_results(results, lang, school_name):
+    """
+    Create a Plotly bar chart for reading analysis results with improved styling.
+    """
+    analysis_titles = [
+        "Read 90%+ Words Correctly",
+        "Literal Comprehension Correct",
+        "Inferential Comprehension Correct",
+        "Foundational Skills Demonstrated"
+    ]
+    percentages = [
+        results['analysis_one']['percentage_meeting'],
+        results['analysis_two']['percentage_meeting'],
+        results['analysis_three']['percentage_meeting'],
+        results['analysis_four']['percentage_meeting']
+    ]
+    plot_data = {
+        "Criteria": analysis_titles,
+        "Percentage": percentages
+    }
+    fig = px.bar(plot_data, x="Criteria", y="Percentage", 
+                 title=f"{lang} Reading Analysis Results - {school_name}",
+                 labels={"Percentage": "Percentage (%)"},
+                 text='Percentage',
+                 color='Percentage',
+                 color_continuous_scale=px.colors.sequential.Viridis)
+    fig.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+    fig.update_layout(yaxis=dict(range=[0, 100]),
+                      autosize=True,
+                      margin=dict(l=10, r=10, t=40, b=10),
+                      template='plotly_white')
+    return fig
+
+def plot_reading_breakdown(analysis_age, analysis_gender):
+    """
+    Create additional Plotly figures for reading analysis breakdowns by age and gender.
+    """
+    # Age breakdown: line chart for each metric by student age.
+    age_data = {"Age": [], "Percentage": [], "Metric": []}
+    for metric, breakdown in analysis_age.items():
+        for age, data in breakdown.items():
+            age_data["Age"].append(age)
+            age_data["Percentage"].append(data["percentage"])
+            age_data["Metric"].append(metric)
+    fig_age = None
+    if age_data["Age"]:
+        age_df = pd.DataFrame(age_data)
+        fig_age = px.line(age_df, x="Age", y="Percentage", color="Metric",
+                          markers=True, title="Reading Analysis by Age",
+                          labels={"Percentage": "Percentage of Students", "Age": "Student Age"})
+        fig_age.update_layout(autosize=True,
+                              margin=dict(l=10, r=10, t=40, b=10),
+                              template='plotly_white')
+    
+    # Gender breakdown: bar chart for each metric by gender.
+    gender_data = {"Gender": [], "Metric": [], "Percentage": []}
+    for gender, metrics in analysis_gender.items():
+        for metric, percentage in metrics.items():
+            gender_data["Gender"].append(gender)
+            gender_data["Metric"].append(metric)
+            gender_data["Percentage"].append(percentage)
+    fig_gender = None
+    if gender_data["Gender"]:
+        gender_df = pd.DataFrame(gender_data)
+        fig_gender = px.bar(gender_df, x="Metric", y="Percentage", color="Gender",
+                            barmode='group', title="Reading Analysis by Gender",
+                            labels={"Percentage": "Percentage of Students"})
+        fig_gender.update_layout(autosize=True,
+                                 margin=dict(l=10, r=10, t=40, b=10),
+                                 template='plotly_white')
+        fig_gender.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+    
+    return {
+        "fig_reading_age": fig_age,
+        "fig_reading_gender": fig_gender
+    }
 
 # ---------------------------
 # Formatted Results Functions

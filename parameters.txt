@@ -1,0 +1,38 @@
+# -------------------------
+# ANALYSIS PARAMETERS
+# -------------------------
+# drop FL27_cleaned5 for Siddhartha Kula Basic School and Ghami Solar Basic Schools because incorrect entries in the survey app
+numeracy_ids = ["FL23_cleaned1", "FL23_cleaned2", "FL23_cleaned3", "FL23_cleaned4", "FL23_cleaned5", \
+                 "FL23_cleaned6", "FL24_cleaned1", "FL24_cleaned2", "FL24_cleaned3", "FL24_cleaned4", "FL24_cleaned5", \
+                 "FL25_cleaned1", "FL25_cleaned2", "FL25_cleaned3", "FL25_cleaned4", "FL25_cleaned5", \
+                 "FL26", "FL26C", "FL27_cleaned1", "FL27_cleaned2", "FL27_cleaned3", "FL27_cleaned4",'FL27_cleaned5'] 
+
+# READING TASKS ENGLISH
+total_short_eng_words = 14
+total_long_eng_words = 61
+eng_reading_ids = ['FL13_cleaned','FL15','FL17',
+                         'FL19_cleaned','FL21B_cleaned1','FL21B_cleaned2','FL21B_cleaned3','FL21B_cleaned4','FL21B_cleaned5']
+
+long_eng_reading_IDs = [eng_reading_ids[i] for i in [3,4,5,6,7,8]]
+short_eng_reading_IDs = [eng_reading_ids[i] for i in [0,1,2]]
+
+# READING TASKS NEPALI
+total_short_nep_words = 16
+total_long_nep_words = 48
+total_long_nep_words_1 = 60
+nep_reading_ids = data = ["FL21G_cleaned", "FL21I", "FL21K", 
+                          "FL21O_cleaned", "FL22_cleaned1", "FL22_cleaned2", "FL22_cleaned3", "FL22_cleaned4", "FL22_cleaned5"]
+long_nep_reading_IDs = [nep_reading_ids[i] for i in [3,4,5,6,7,8]]
+short_nep_reading_IDs = [nep_reading_ids[i] for i in [0,1,2]]
+
+#for all schoools, the same English story (with names changed, no change in word count or question type)
+#for Siddhartha Kula Basic School and Ghami Solar Basic School, use story1 ids for Nepali 
+
+eng_reading_litComp_ids = ['FL21B_cleaned1', 'FL21B_cleaned2', 'FL21B_cleaned3']
+eng_reading_infComp_ids = [ 'FL21B_cleaned4', 'FL21B_cleaned5']
+
+nep_reading_litComp_ids_story1 = ['FL22B_cleaned1','FL22B_cleaned2','FL22B_cleaned3']
+nep_reading_litComp_ids_story2 = ['FL22B_cleaned1','FL22B_cleaned2','FL22B_cleaned3','FL22B_cleaned4']
+
+nep_reading_infComp_ids_story1 = ['FL22B_cleaned4','FL22B_cleaned5']
+nep_reading_infComp_ids_story2 = ['FL22B_cleaned5']
