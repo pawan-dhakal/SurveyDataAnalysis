@@ -386,14 +386,49 @@ def reading_analysis(df, ids, total_words_read=None, lang="English", school=None
     
     return analysis_results
 
-# ---------------------------
-# Plotting Functions (with improved styling)
-# ---------------------------
+def update_common_layout(fig, title, y_range=(0, 120), width=600):
+    """
+    Update the layout for a Plotly figure with consistent styling,
+    reduced width, and internal legend placement.
+    """
+    fig.update_layout(
+        title={
+            'text': title,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16}
+        },
+        yaxis=dict(range=y_range, tickformat=".2f"),
+        template='plotly_white',
+        margin=dict(l=20, r=20, t=60, b=20),
+        width=width,
+        font=dict(size=12),
+        legend=dict(
+            x=0.75,
+            y=0.95,
+            bgcolor='rgba(255,255,255,0.6)',
+            bordercolor='black',
+            borderwidth=1
+        )
+    )
+    return fig
+
+def update_bar_traces(fig):
+    """
+    Update bar trace settings for better readability: show both percentage and count.
+    """
+    fig.update_traces(
+        texttemplate='%{text:.2f}%<br>Count: %{customdata[0]}',
+        textposition='outside',
+        hovertemplate='<b>%{x}</b><br>Percentage: %{y:.2f}%<br>Count: %{customdata[0]}<extra></extra>'
+    )
+    return fig
+
 def plot_numeracy_results(analysis_results):
     """
-    Create Plotly figures for numeracy analysis results with improved styling
-    and enhanced tooltips that include count information.
-    This version pulls count info directly from analysis_results.
+    Create Plotly figures for numeracy analysis results with improved styling,
+    enhanced tooltips, internal legends, and text annotations that display both
+    percentage and count values.
     """
     # Define task labels corresponding to each analysis result.
     task_labels = [
@@ -404,7 +439,9 @@ def plot_numeracy_results(analysis_results):
         'Foundational Numeracy'
     ]
     
-    # Overall analysis: Use the percentage and count_meeting values.
+    # -------------------------
+    # Overall Analysis Plot
+    # -------------------------
     overall_data = [
         analysis_results['analysis_one']['percentage_meeting'],
         analysis_results['analysis_two']['percentage_meeting'],
@@ -430,21 +467,18 @@ def plot_numeracy_results(analysis_results):
         overall_df, 
         x='Task', 
         y='Percentage', 
-        title="Overall Numeracy Task Completion Percentage",
-        labels={'Percentage': 'Percentage of Students'},
         text='Percentage',
+        custom_data=['Count'],
+        color='Task',
+        color_discrete_sequence=px.colors.qualitative.Set2,
         hover_data={"Count": True, "Percentage":":.2f"}
     )
-    fig_overall.update_layout(
-        yaxis=dict(range=[0, 120], tickformat=".2f"),
-        showlegend=False,
-        autosize=True,
-        margin=dict(l=10, r=10, t=40, b=10),
-        template='plotly_white'
-    )
-    fig_overall.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+    fig_overall = update_common_layout(fig_overall, "Overall Numeracy Task Completion Percentage", y_range=(0, 120))
+    fig_overall = update_bar_traces(fig_overall)
     
-    # Gender analysis: For each task, pull gender-specific percentage and count info.
+    # -------------------------
+    # Gender Analysis Plot
+    # -------------------------
     male_percentages = []
     female_percentages = []
     male_counts = []
@@ -469,21 +503,19 @@ def plot_numeracy_results(analysis_results):
         x='Task', 
         y='Percentage', 
         color='Gender',
-        title="Numeracy Task Completion by Gender",
         barmode='group', 
         text='Percentage',
-        labels={'Percentage': 'Percentage of Students'},
-        hover_data={"Count": True, "Percentage":":.2f"}
+        custom_data=['Count'],
+        color_discrete_sequence=px.colors.qualitative.Set1,
+        hover_data={"Count": True, "Percentage":":.2f"},
+        title="Numeracy Task Completion by Gender"
     )
-    fig_gender.update_layout(
-        yaxis=dict(range=[0, 120], tickformat=".2f"),
-        autosize=True,
-        margin=dict(l=10, r=10, t=40, b=10),
-        template='plotly_white'
-    )
-    fig_gender.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+    fig_gender = update_common_layout(fig_gender, "Numeracy Task Completion by Gender", y_range=(0, 120))
+    fig_gender = update_bar_traces(fig_gender)
     
-    # Age-wise analysis: For each task, use the provided breakdown in analysis_age.
+    # -------------------------
+    # Age Analysis Plot
+    # -------------------------
     age_analysis = analysis_results.get('analysis_age', {})
     age_data = {'Age': [], 'Percentage': [], 'Task': [], 'Count': []}
     mapping = {
@@ -500,30 +532,35 @@ def plot_numeracy_results(analysis_results):
                 age_data['Age'].append(age_group)
                 age_data['Percentage'].append(data.get('percentage', 0))
                 age_data['Task'].append(task)
-                age_data['Count'].append(data.get('count', 0))
+                # Use the correct field name for count.
+                age_data['Count'].append(data.get('count_meeting', 0))
     age_fig = None
     if age_data['Age']:
         age_df = pd.DataFrame(age_data)
+        # Pass the count as custom data.
         age_fig = px.line(
             age_df, 
             x='Age', 
             y='Percentage', 
             color='Task',
-            title="Numeracy Task Completion by Age",
             markers=True,
-            labels={'Percentage': 'Percentage of Students'},
-            hover_data={"Count": True, "Percentage":":.2f"}
+            custom_data=['Count'],
+            title="Numeracy Task Completion by Age",
+            color_discrete_sequence=px.colors.qualitative.Set2
         )
-        age_fig.update_layout(
-            yaxis=dict(range=[0, 140], tickformat=".2f"),
-            xaxis_title="Age (years)",
-            yaxis_title="Percentage of Students",
-            autosize=True,
-            margin=dict(l=10, r=10, t=40, b=10),
-            template='plotly_white'
+        # For line plots, add text labels at each marker.
+        age_fig.update_traces(
+            text=age_df.apply(lambda row: f"{row['Percentage']:.2f}%\nCount: {row['Count']}", axis=1),
+            textposition='top center',
+            hovertemplate='<b>%{fullData.name}</b><br>Age: %{x}<br>Percentage: %{y:.2f}%<br>Count: %{customdata[0]}<extra></extra>'
         )
+        age_fig = update_common_layout(age_fig, "Numeracy Task Completion by Age", y_range=(0, 140))
+        age_fig.update_xaxes(title="Age (years)")
+        age_fig.update_yaxes(title="Percentage of Students")
     
-    # Grade-wise analysis: For each task, use the breakdown in analysis_grade.
+    # -------------------------
+    # Grade Analysis Plot
+    # -------------------------
     grade_analysis = analysis_results.get('analysis_grade', {})
     grade_data = {'Task': [], 'Percentage': [], 'Grade': [], 'Count': []}
     for task in task_labels:
@@ -533,7 +570,8 @@ def plot_numeracy_results(analysis_results):
                 grade_data['Task'].append(task)
                 grade_data['Percentage'].append(data.get('percentage', 0))
                 grade_data['Grade'].append(grade_group)
-                grade_data['Count'].append(data.get('count', 0))
+                # Correct count field
+                grade_data['Count'].append(data.get('count_meeting', 0))
     grade_fig = None
     if grade_data['Task']:
         grade_df = pd.DataFrame(grade_data)
@@ -542,25 +580,343 @@ def plot_numeracy_results(analysis_results):
             x='Task', 
             y='Percentage', 
             color='Grade',
-            title="Numeracy Task Completion by Grade",
             barmode='group', 
             text='Percentage',
-            labels={'Percentage': 'Percentage of Students'},
-            hover_data={"Count": True, "Percentage":":.2f"}
+            custom_data=['Count'],
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            hover_data={"Count": True, "Percentage":":.2f"},
+            title="Numeracy Task Completion by Grade"
         )
-        grade_fig.update_layout(
-            yaxis=dict(range=[0, 120], tickformat=".2f"),
-            autosize=True,
-            margin=dict(l=10, r=10, t=40, b=10),
-            template='plotly_white'
-        )
-        grade_fig.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+        grade_fig = update_common_layout(grade_fig, "Numeracy Task Completion by Grade", y_range=(0, 120))
+        grade_fig = update_bar_traces(grade_fig)
     
     return {
         "fig_overall": fig_overall,
         "fig_gender": fig_gender,
         "fig_age": age_fig,
         "fig_grade": grade_fig
+    }
+
+
+def plot_reading_results(analysis_results, df, width=600):
+    """
+    Create Plotly figures for reading analysis results with improved styling,
+    enhanced tooltips, internal legends, and text annotations that display both
+    percentage and count values.
+    
+    Parameters:
+      - analysis_results: Dictionary returned by reading_analysis.
+      - df: The DataFrame used for analysis (used to compute group totals for gender and grade breakdowns).
+      - width: Fixed width for the plots (default 600).
+      
+    Returns a dictionary with the following keys:
+      - "fig_overall": Overall reading performance (words read, literal, inferential, foundational).
+      - "fig_gender": Breakdown by gender.
+      - "fig_age": Breakdown by age.
+      - "fig_grade": Breakdown by grade.
+    """
+    # Define task labels
+    tasks = [
+        "Reading (Words)",
+        "Literal Comprehension",
+        "Inferential Comprehension",
+        "Foundational Reading"
+    ]
+    
+    # -------------------------
+    # Overall Reading Performance
+    # -------------------------
+    overall_percentages = [
+        analysis_results['analysis_one']['percentage_meeting'],
+        analysis_results['analysis_two']['percentage_meeting'],
+        analysis_results['analysis_three']['percentage_meeting'],
+        analysis_results['analysis_four']['percentage_meeting']
+    ]
+    overall_counts = [
+        analysis_results['analysis_one']['count_meeting'],
+        analysis_results['analysis_two']['count_meeting'],
+        analysis_results['analysis_three']['count_meeting'],
+        analysis_results['analysis_four']['count_meeting']
+    ]
+    overall_df = pd.DataFrame({
+        "Task": tasks,
+        "Percentage": overall_percentages,
+        "Count": overall_counts
+    })
+    fig_overall = px.bar(
+        overall_df,
+        x="Task",
+        y="Percentage",
+        text="Percentage",
+        custom_data=["Count"],
+        color="Task",
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        hover_data={"Count": True, "Percentage":":.1f"},
+        title="Overall Reading Task Completion"
+    )
+    fig_overall.update_traces(
+        texttemplate='%{text:.1f}%<br>Count: %{customdata[0]}',
+        textposition='outside'
+    )
+    fig_overall = update_common_layout(fig_overall, "Overall Reading Task Completion", y_range=(0, 120), width=width)
+    fig_overall = update_bar_traces(fig_overall)
+    
+    # -------------------------
+    # Gender Breakdown
+    # -------------------------
+    # Compute totals for each gender from the dataframe
+    gender_totals = df['studentGender'].value_counts().to_dict()
+    gender_rows = []
+    for gender, metrics in analysis_results["analysis_gender"].items():
+        total_gender = gender_totals.get(gender, 0)
+        for key, label in zip(
+            ["read_words", "literal", "inferential", "foundational"],
+            ["Reading (Words)", "Literal Comprehension", "Inferential Comprehension", "Foundational Reading"]
+        ):
+            count = round(metrics[key] * total_gender / 100)
+            gender_rows.append({
+                "Gender": gender,
+                "Task": label,
+                "Percentage": metrics[key],
+                "Count": count
+            })
+    gender_df = pd.DataFrame(gender_rows)
+    fig_gender = px.bar(
+        gender_df,
+        x="Task",
+        y="Percentage",
+        color="Gender",
+        barmode="group",
+        title="Reading Task Completion by Gender",
+        text="Percentage",
+        custom_data=["Count"],
+        hover_data={"Count": True, "Percentage":":.1f"},
+        color_discrete_sequence=px.colors.qualitative.Set1
+    )
+    fig_gender.update_traces(
+        texttemplate='%{text:.1f}%<br>Count: %{customdata[0]}',
+        textposition='outside'
+    )
+    fig_gender = update_common_layout(fig_gender, "Reading Task Completion by Gender", y_range=(0, 120), width=width)
+    fig_gender = update_bar_traces(fig_gender)
+    
+    # -------------------------
+    # Age Breakdown
+    # -------------------------
+    age_rows = []
+    if "analysis_age" in analysis_results:
+        for task_key, label in zip(
+            ["read_words", "literal", "inferential", "foundational"],
+            ["Reading (Words)", "Literal Comprehension", "Inferential Comprehension", "Foundational Reading"]
+        ):
+            if task_key in analysis_results["analysis_age"]:
+                for age_group, data in analysis_results["analysis_age"][task_key].items():
+                    age_rows.append({
+                        "Age": age_group,
+                        "Task": label,
+                        "Percentage": data["percentage"],
+                        "Count": data["count"]
+                    })
+    fig_age = None
+    if age_rows:
+        age_df = pd.DataFrame(age_rows)
+        fig_age = px.line(
+            age_df,
+            x="Age",
+            y="Percentage",
+            color="Task",
+            markers=True,
+            custom_data=["Count"],
+            title="Reading Task Completion by Age",
+            color_discrete_sequence=px.colors.qualitative.Set2,
+            hover_data={"Count": True, "Percentage":":.1f"}
+        )
+        fig_age.update_traces(
+            text=age_df.apply(lambda row: f"{row['Percentage']:.1f}%\nCount: {row['Count']}", axis=1),
+            textposition='top center',
+            hovertemplate='<b>%{fullData.name}</b><br>Age: %{x}<br>Percentage: %{y:.1f}%<br>Count: %{customdata[0]}<extra></extra>'
+        )
+        fig_age = update_common_layout(fig_age, "Reading Task Completion by Age", y_range=(0, 140), width=width)
+        fig_age.update_xaxes(title="Age (years)")
+        fig_age.update_yaxes(title="Percentage of Students")
+    
+    # -------------------------
+    # Grade Breakdown
+    # -------------------------
+    grade_totals = df['grade'].value_counts().to_dict()
+    grade_rows = []
+    if "analysis_grade" in analysis_results:
+        for task_key, label in zip(
+            ["read_words", "literal", "inferential", "foundational"],
+            ["Reading (Words)", "Literal Comprehension", "Inferential Comprehension", "Foundational Reading"]
+        ):
+            if task_key in analysis_results["analysis_grade"]:
+                for grade_group, data in analysis_results["analysis_grade"][task_key].items():
+                    total_grade = grade_totals.get(grade_group, 0)
+                    count = round(data["percentage"] * total_grade / 100)
+                    grade_rows.append({
+                        "Grade": grade_group,
+                        "Task": label,
+                        "Percentage": data["percentage"],
+                        "Count": count
+                    })
+    fig_grade = None
+    if grade_rows:
+        grade_df = pd.DataFrame(grade_rows)
+        fig_grade = px.bar(
+            grade_df,
+            x="Task",
+            y="Percentage",
+            color="Grade",
+            barmode="group",
+            text="Percentage",
+            custom_data=["Count"],
+            title="Reading Task Completion by Grade",
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            hover_data={"Count": True, "Percentage":":.1f"}
+        )
+        fig_grade.update_traces(
+            texttemplate='%{text:.1f}%<br>Count: %{customdata[0]}',
+            textposition='outside'
+        )
+        fig_grade = update_common_layout(fig_grade, "Reading Task Completion by Grade", y_range=(0, 120), width=width)
+        fig_grade = update_bar_traces(fig_grade)
+    
+    return {
+        "fig_overall": fig_overall,
+        "fig_gender": fig_gender,
+        "fig_age": fig_age,
+        "fig_grade": fig_grade
+    }
+
+def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, width=800):
+    """Generates key visual summaries for the surveyed schools based on the filtered data.
+
+    Args:
+        df (DataFrame): The filtered dataset of student survey responses.
+        numeracy_ids (list): Question IDs for numeracy assessment.
+        eng_reading_ids (list): Question IDs for English reading assessment.
+        nep_reading_ids (list): Question IDs for Nepali reading assessment.
+        width (int): Fixed width for the charts.
+
+    Returns:
+        dict: A dictionary containing summary metrics and Plotly figures.
+    """
+    # Summary Statistics
+    total_students = len(df)
+    total_schools = df['school'].nunique()
+
+    # Aggregated school performance data (for each school, compute numeracy and reading performance)
+    school_list = sorted(df['school'].unique().tolist())
+    school_summary = []
+    for school in school_list:
+        school_df = df[df['school'] == school]
+        numeracy_res = numeracy_analysis(school_df, numeracy_ids)
+        eng_res = reading_analysis(school_df, eng_reading_ids, lang="English")
+        nep_res = reading_analysis(school_df, nep_reading_ids, lang="Nepali")
+        school_summary.append({
+            "School": school,
+            "Numeracy (%)": numeracy_res['analysis_five']['percentage_meeting'],
+            "English Reading (%)": eng_res['analysis_four']['percentage_meeting'],
+            "Nepali Reading (%)": nep_res['analysis_four']['percentage_meeting']
+        })
+    summary_df = pd.DataFrame(school_summary)
+
+    # School performance comparison bar chart (grouped by school)
+    fig_summary = px.bar(
+        summary_df,
+        x="School",
+        y=["Numeracy (%)", "English Reading (%)", "Nepali Reading (%)"],
+        barmode="group",
+        title="Competency Comparison Across Schools",
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+    fig_summary.update_layout(
+        xaxis_tickangle=-45,
+        autosize=True,
+        width=width,
+        margin=dict(l=40, r=40, t=60, b=60)
+    )
+
+    # Overall average performance across selected schools
+    avg_numeracy = summary_df["Numeracy (%)"].mean()
+    avg_eng = summary_df["English Reading (%)"].mean()
+    avg_nep = summary_df["Nepali Reading (%)"].mean()
+    avg_df = pd.DataFrame({
+        "Category": ["Numeracy", "English Reading", "Nepali Reading"],
+        "Average (%)": [avg_numeracy, avg_eng, avg_nep]
+    })
+    fig_performance = px.bar(
+        avg_df,
+        x="Category",
+        y="Average (%)",
+        title="Average Performance Across Selected Schools",
+        text="Average (%)",
+        color="Category",
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig_performance.update_traces(
+        texttemplate='%{text:.1f}%',
+        textposition='outside'
+    )
+    fig_performance.update_layout(
+        autosize=True,
+        width=width,
+        margin=dict(l=40, r=40, t=60, b=60)
+    )
+
+    # Gender distribution pie chart
+    gender_counts = df['studentGender'].value_counts()
+    fig_gender = px.pie(
+        values=gender_counts.values,
+        names=gender_counts.index,
+        title="Gender Distribution",
+        hole=0.4,
+        color_discrete_sequence=px.colors.qualitative.Set1
+    )
+    fig_gender.update_layout(
+        autosize=True,
+        width=width,
+        margin=dict(l=40, r=40, t=60, b=60)
+    )
+
+    # Grade distribution bar chart
+    grade_counts = df['grade'].value_counts().sort_index()
+    fig_grade = px.bar(
+        x=grade_counts.index,
+        y=grade_counts.values,
+        labels={'x': 'Grade', 'y': 'Number of Students'},
+        title="Grade Distribution",
+        color_discrete_sequence=px.colors.qualitative.Pastel
+    )
+    fig_grade.update_layout(
+        autosize=True,
+        width=width,
+        margin=dict(l=40, r=40, t=60, b=60)
+    )
+
+    # Age distribution histogram: using 'studentAge'
+    fig_age = px.histogram(
+        df,
+        x="studentAge",
+        title="Age Distribution of Students",
+        nbins=15,
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    fig_age.update_layout(
+        autosize=True,
+        width=width,
+        margin=dict(l=40, r=40, t=60, b=60)
+    )
+
+    return {
+        "total_students": total_students,
+        "total_schools": total_schools,
+        "fig_summary": fig_summary,
+        "fig_performance": fig_performance,
+        "fig_gender": fig_gender,
+        "fig_grade": fig_grade,
+        "fig_age": fig_age
     }
 
 # ---------------------------
