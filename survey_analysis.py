@@ -837,9 +837,9 @@ def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, wi
     fig_summary = px.bar(
         summary_df,
         x="School",
-        y=["Numeracy (Count)", "English Reading (Count)", "Nepali Reading (Count)"],
+        y=["Numeracy (%)", "English Reading (%)", "Nepali Reading (%)"],
         barmode="group",
-        title="Competency Comparison Across Schools (Counts)",
+        title="Competency Comparison Across Schools (%)",
         color_discrete_sequence=px.colors.qualitative.Set2,
         text_auto=True
     )
@@ -850,6 +850,8 @@ def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, wi
         xaxis_tickangle=0,
         legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center", title="Competency")
     )
+
+    fig_summary = update_common_layout(fig_summary,"Competency Comparison Across Schools (%)", y_range=(0,80))
 
     # Overall average performance (percentage)
     avg_df = pd.DataFrame({
