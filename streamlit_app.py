@@ -72,39 +72,39 @@ tab_overview, tab_numeracy, tab_reading = st.tabs([
 # OVERVIEW TAB: Enhanced visual summary using filtered data
 # -------------------------
 with tab_overview:
-    st.header("Survey Data Overview")
+    st.header("📊 Survey Data Overview")
 
-    # Generate all summary figures based on the filtered dataset (df_filtered)
+    # Generate all summary figures based on the complete dataset (df)
     overview_results = sa.plot_overview_summary(
-        df_filtered, 
+        df, 
         sa.numeracy_ids, 
         sa.long_eng_reading_ids, 
         sa.long_nep_reading_ids
     )
 
-    # Display Summary Metrics
+    # Display Summary Metrics in two columns with Unicode icons
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Total Students Surveyed", overview_results["total_students"])
+        st.metric("👥 Total Students Surveyed", overview_results["total_students"])
     with col2:
-        st.metric("Total Schools Represented", overview_results["total_schools"])
-
-    st.markdown("---")
-
-    # Display School Performance Comparison (Competency by School)
-    st.subheader("Competency Comparison Across Schools")
-    st.plotly_chart(overview_results["fig_summary"], use_container_width=True)
+        st.metric("🏫 Total Schools Represented", overview_results["total_schools"])
 
     st.markdown("---")
 
     # Display Overall Average Performance Summary
-    st.subheader("Average Performance Summary")
+    st.subheader("⭐ Average Performance Summary")
     st.plotly_chart(overview_results["fig_performance"], use_container_width=True)
 
     st.markdown("---")
 
+    # Display School Performance Comparison (Competency by School)
+    st.subheader("🏆 Competency Comparison Across Schools")
+    st.plotly_chart(overview_results["fig_summary"], use_container_width=True)
+
+    st.markdown("---")
+
     # Display Demographics: Gender and Grade
-    st.subheader("Population Breakdown")
+    st.subheader("👥 Population Breakdown")
     row1_col1, row1_col2 = st.columns([2, 3])
     with row1_col1:
         st.plotly_chart(overview_results["fig_gender"], use_container_width=True)
@@ -114,7 +114,7 @@ with tab_overview:
     st.markdown("---")
 
     # Display Age Distribution
-    st.subheader("Age Distribution")
+    st.subheader("⏳ Age Distribution")
     st.plotly_chart(overview_results["fig_age"], use_container_width=True)
     
 # -------------------------
@@ -125,6 +125,18 @@ with tab_numeracy:
 
     numeracy_analysis = sa.numeracy_analysis(df_filtered, sa.numeracy_ids)
     plots = sa.plot_numeracy_results(numeracy_analysis)
+
+    # Display Summary Metrics in two columns with Unicode icons
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("👥 Total Students Surveyed", len(df_filtered))
+    with col2:
+        schools = sorted(df_filtered['school'].unique())
+        if len(schools) > 1:
+            school_text = "<br>".join(schools)
+        else:
+            school_text = schools[0]
+        st.markdown(f"**🏫 Selected Schools:**<br>{school_text}", unsafe_allow_html=True)
 
     st.subheader("Task Completion Rates")
     st.plotly_chart(plots['fig_overall'], use_container_width=True)
@@ -145,6 +157,18 @@ with tab_numeracy:
 # -------------------------
 with tab_reading:
     st.header("Reading Proficiency Analysis")
+
+    # Display Summary Metrics in two columns with Unicode icons
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("👥 Total Students Surveyed", len(df_filtered))
+    with col2:
+        schools = sorted(df_filtered['school'].unique())
+        if len(schools) > 1:
+            school_text = "<br>".join(schools)
+        else:
+            school_text = schools[0]
+        st.markdown(f"**🏫 Selected Schools:**<br>{school_text}", unsafe_allow_html=True)
 
     # Create sub-tabs for English and Nepali reading analysis
     tab_eng, tab_nep = st.tabs([

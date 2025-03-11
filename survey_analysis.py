@@ -193,9 +193,15 @@ def reading_analysis(df, ids, total_words_read=None, lang="English", school=None
       - school: Filter by school (if provided)
       - printText: Whether to print a completion message.
     """
-    # Filter by school if provided
-    if school is not None and school.lower() != "all":
-        df = df[df['school'] == school]
+    # # Filter by school if provided
+    # if school is not None and school.lower() != "all":
+    #     df = df[df['school'] == school]
+
+    # Auto-detect school if not provided and only one unique school exists
+    if school is None:
+        unique_schools = df['school'].unique()
+        if len(unique_schools) == 1:
+            school = unique_schools[0]
     
     # Determine if using the new Nepali story (for all schools except Ghami Solar Basic School and Siddhartha Kula Basic School)
     newNepaliStory = True
@@ -208,10 +214,11 @@ def reading_analysis(df, ids, total_words_read=None, lang="English", school=None
     else:
         if lang == "English":
             total_words = 61
-        elif lang == "Nepali" and newNepaliStory:
-            total_words = 60
-        elif lang == "Nepali" and not newNepaliStory:
-            total_words = 48
+        if lang == "Nepali":
+            if newNepaliStory:
+                total_words = 60
+            else:
+                total_words = 48
 
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
@@ -404,8 +411,7 @@ def update_common_layout(fig, title, y_range=(0, 120), width=600):
         width=width,
         font=dict(size=12),
         legend=dict(
-            x=0.75,
-            y=0.95,
+            orientation="h", y=-0.2, x=0.5, xanchor="center",
             bgcolor='rgba(255,255,255,0.6)',
             bordercolor='black',
             borderwidth=1
@@ -597,7 +603,6 @@ def plot_numeracy_results(analysis_results):
         "fig_grade": grade_fig
     }
 
-
 def plot_reading_results(analysis_results, df, width=600):
     """
     Create Plotly figures for reading analysis results with improved styling,
@@ -779,7 +784,7 @@ def plot_reading_results(analysis_results, df, width=600):
             texttemplate='%{text:.1f}%<br>Count: %{customdata[0]}',
             textposition='outside'
         )
-        fig_grade = update_common_layout(fig_grade, "Reading Task Completion by Grade", y_range=(0, 120), width=width)
+        fig_grade = update_common_layout(fig_grade, "Reading Task Completion by Grade", y_range=(0, 100), width=width)
         fig_grade = update_bar_traces(fig_grade)
     
     return {
@@ -788,6 +793,7 @@ def plot_reading_results(analysis_results, df, width=600):
         "fig_age": fig_age,
         "fig_grade": fig_grade
     }
+
 
 def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, width=800):
     """Generates key visual summaries for the surveyed schools based on the filtered data.
@@ -805,47 +811,56 @@ def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, wi
     # Summary Statistics
     total_students = len(df)
     total_schools = df['school'].nunique()
-
-    # Aggregated school performance data (for each school, compute numeracy and reading performance)
-    school_list = sorted(df['school'].unique().tolist())
+    
+    # Aggregated school performance data
     school_summary = []
-    for school in school_list:
+    
+    for school in sorted(df['school'].unique()):
         school_df = df[df['school'] == school]
         numeracy_res = numeracy_analysis(school_df, numeracy_ids)
         eng_res = reading_analysis(school_df, eng_reading_ids, lang="English")
         nep_res = reading_analysis(school_df, nep_reading_ids, lang="Nepali")
+
         school_summary.append({
             "School": school,
             "Numeracy (%)": numeracy_res['analysis_five']['percentage_meeting'],
+            "Numeracy (Count)": numeracy_res['analysis_five']['count_meeting'],
             "English Reading (%)": eng_res['analysis_four']['percentage_meeting'],
-            "Nepali Reading (%)": nep_res['analysis_four']['percentage_meeting']
+            "English Reading (Count)": eng_res['analysis_four']['count_meeting'],
+            "Nepali Reading (%)": nep_res['analysis_four']['percentage_meeting'],
+            "Nepali Reading (Count)": nep_res['analysis_four']['count_meeting']
         })
+    
     summary_df = pd.DataFrame(school_summary)
-
-    # School performance comparison bar chart (grouped by school)
+    
+    # School performance comparison bar chart (showing both percentage and count)
     fig_summary = px.bar(
         summary_df,
         x="School",
-        y=["Numeracy (%)", "English Reading (%)", "Nepali Reading (%)"],
+        y=["Numeracy (Count)", "English Reading (Count)", "Nepali Reading (Count)"],
         barmode="group",
-        title="Competency Comparison Across Schools",
-        color_discrete_sequence=px.colors.qualitative.Set2
+        title="Competency Comparison Across Schools (Counts)",
+        color_discrete_sequence=px.colors.qualitative.Set2,
+        text_auto=True
     )
     fig_summary.update_layout(
-        xaxis_tickangle=-45,
         autosize=True,
         width=width,
-        margin=dict(l=40, r=40, t=60, b=60)
+        margin=dict(l=40, r=40, t=60, b=60),
+        xaxis_tickangle=0,
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center", title="Competency")
     )
 
-    # Overall average performance across selected schools
-    avg_numeracy = summary_df["Numeracy (%)"].mean()
-    avg_eng = summary_df["English Reading (%)"].mean()
-    avg_nep = summary_df["Nepali Reading (%)"].mean()
+    # Overall average performance (percentage)
     avg_df = pd.DataFrame({
         "Category": ["Numeracy", "English Reading", "Nepali Reading"],
-        "Average (%)": [avg_numeracy, avg_eng, avg_nep]
+        "Average (%)": [
+            summary_df["Numeracy (%)"].mean(),
+            summary_df["English Reading (%)"].mean(),
+            summary_df["Nepali Reading (%)"].mean()
+        ]
     })
+    
     fig_performance = px.bar(
         avg_df,
         x="Category",
@@ -855,47 +870,66 @@ def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, wi
         color="Category",
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
-    fig_performance.update_traces(
-        texttemplate='%{text:.1f}%',
-        textposition='outside'
-    )
     fig_performance.update_layout(
         autosize=True,
         width=width,
-        margin=dict(l=40, r=40, t=60, b=60)
+        margin=dict(l=40, r=40, t=60, b=60),
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center")
     )
 
     # Gender distribution pie chart
-    gender_counts = df['studentGender'].value_counts()
+    gender_counts = df['studentGender'].value_counts().reset_index()
+    gender_counts.columns = ['Gender', 'Count']
+    gender_counts['Percentage'] = (gender_counts['Count'] / total_students * 100).round(1)
+    
     fig_gender = px.pie(
-        values=gender_counts.values,
-        names=gender_counts.index,
+        gender_counts,
+        names='Gender',
+        values='Count',
         title="Gender Distribution",
         hole=0.4,
         color_discrete_sequence=px.colors.qualitative.Set1
     )
-    fig_gender.update_layout(
-        autosize=True,
-        width=width,
-        margin=dict(l=40, r=40, t=60, b=60)
+    fig_gender.update_traces(
+        textinfo='label+percent+value',
+        hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
     )
 
-    # Grade distribution bar chart
-    grade_counts = df['grade'].value_counts().sort_index()
+    # Ensure 'grade' column is treated as categorical and sorted
+    df['grade'] = pd.Categorical(df['grade'], categories=sorted(df['grade'].dropna().unique()), ordered=True)
+
+    # Compute grade distribution correctly
+    grade_counts = df['grade'].value_counts().sort_index().reset_index()
+    grade_counts.columns = ['Grade', 'Count']
+    grade_counts['Percentage'] = (grade_counts['Count'] / total_students * 100).round(1)
+    grade_counts['Label'] = grade_counts.apply(lambda row: f"{row['Count']} ({row['Percentage']}%)", axis=1)
+
+    # Plot Grade Distribution with correct count & percentage labels
     fig_grade = px.bar(
-        x=grade_counts.index,
-        y=grade_counts.values,
-        labels={'x': 'Grade', 'y': 'Number of Students'},
+        grade_counts,
+        x='Grade',
+        y='Count',
+        text='Label',  # Display both count and percentage
         title="Grade Distribution",
+        color='Grade',
         color_discrete_sequence=px.colors.qualitative.Pastel
     )
+    
+    fig_grade.update_traces(
+        textposition='outside',
+        hovertemplate='<b>Grade %{x}</b><br>Count: %{y}<br>Percentage: %{text}<extra></extra>'
+    )
+    fig_grade = update_common_layout(fig_grade,"Grade Distribution",y_range=(0,80))
     fig_grade.update_layout(
         autosize=True,
         width=width,
-        margin=dict(l=40, r=40, t=60, b=60)
+        margin=dict(l=40, r=40, t=60, b=60),
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center")
     )
 
-    # Age distribution histogram: using 'studentAge'
+    
+
+    # Age distribution histogram
     fig_age = px.histogram(
         df,
         x="studentAge",
@@ -903,10 +937,8 @@ def plot_overview_summary(df, numeracy_ids, eng_reading_ids, nep_reading_ids, wi
         nbins=15,
         color_discrete_sequence=px.colors.qualitative.Set3
     )
-    fig_age.update_layout(
-        autosize=True,
-        width=width,
-        margin=dict(l=40, r=40, t=60, b=60)
+    fig_age.update_traces(
+        hovertemplate='<b>Age: %{x}</b><br>Count: %{y}<extra></extra>'
     )
 
     return {
