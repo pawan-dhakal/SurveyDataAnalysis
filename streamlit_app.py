@@ -189,18 +189,18 @@ with tab_reading:
         reading_plots_eng = sa.plot_reading_results(eng_res, df_filtered)
         
         # Display Overall Reading Performance
-        st.plotly_chart(reading_plots_eng["fig_overall"], use_container_width=True)
+        st.plotly_chart(reading_plots_eng["fig_overall"], use_container_width=True,key="eng_overall")
         
         # Display Gender Breakdown
-        st.plotly_chart(reading_plots_eng["fig_gender"], use_container_width=True)
+        st.plotly_chart(reading_plots_eng["fig_gender"], use_container_width=True,key="eng_gender")
         
         # Display Age Breakdown (if available)
         if reading_plots_eng["fig_age"]:
-            st.plotly_chart(reading_plots_eng["fig_age"], use_container_width=True)
+            st.plotly_chart(reading_plots_eng["fig_age"], use_container_width=True,key="eng_age")
         
         # Display Grade Breakdown (if available)
         if reading_plots_eng["fig_grade"]:
-            st.plotly_chart(reading_plots_eng["fig_grade"], use_container_width=True)
+            st.plotly_chart(reading_plots_eng["fig_grade"], use_container_width=True,key="eng_grade")
 
     # -------------------------
     # Nepali Reading Analysis
@@ -215,16 +215,16 @@ with tab_reading:
         reading_plots_nep = sa.plot_reading_results(nep_res, df_filtered)
         
         # Display Overall Reading Performance
-        st.plotly_chart(reading_plots_nep["fig_overall"], use_container_width=True)
+        st.plotly_chart(reading_plots_nep["fig_overall"], use_container_width=True,key="nep_overall")
         
         # Display Gender Breakdown
-        st.plotly_chart(reading_plots_nep["fig_gender"], use_container_width=True)
+        st.plotly_chart(reading_plots_nep["fig_gender"], use_container_width=True,key="nep_gender")
         
         # Display Age Breakdown (if available)
         if reading_plots_nep["fig_age"]:
-            st.plotly_chart(reading_plots_nep["fig_age"], use_container_width=True)
+            st.plotly_chart(reading_plots_nep["fig_age"], use_container_width=True,key="nep_age")
         
         # Display Grade Breakdown (if available)
         if reading_plots_nep["fig_grade"]:
-            st.plotly_chart(reading_plots_nep["fig_grade"], use_container_width=True)
+            st.plotly_chart(reading_plots_nep["fig_grade"], use_container_width=True,key="nep_grade")
 
