@@ -16,43 +16,20 @@ st.set_page_config(
 # -------------------------
 # LOAD DATA (CACHED)
 # -------------------------
+
+
 @st.cache_data
 def load_data_cached(filepath):
     return sa.load_data(filepath)
 
 
-# -------------------------
-# SIDEBAR DATA SOURCE SELECTION
-# -------------------------
-st.sidebar.header("📁 Data Source Selection")
-
-# Define available CSV files
-available_datasets = [
-    'combined_LLEST_EAST_first_survey_records.csv',
-    'combined_LLEST_first_survey_records.csv',
-    'combined_EAST_first_survey_records.csv'
-]
-
-# Create selectbox for dataset selection
-selected_dataset = st.sidebar.selectbox(
-    "Select Dataset:",
-    available_datasets,
-    index=0,  # Default to first dataset
-    help="Choose which dataset to analyze"
-)
-
-# Load the selected dataset
-df = load_data_cached(selected_dataset)
-
-# Display dataset info
-st.sidebar.info(f"📊 **Current Dataset:**\n\n{selected_dataset}")
-
-st.sidebar.markdown("---")
+data_path = 'combined_cleaned_survey_records_Nov2025.csv'
+df = load_data_cached(data_path)
 
 # -------------------------
 # SIDEBAR SCHOOL SELECTION
 # -------------------------
-st.sidebar.header("🏫 School Selection")
+st.sidebar.header("School Selection")
 
 # Get list of schools and add 'All' option
 schools = sorted(df['school'].unique().tolist())
@@ -73,6 +50,8 @@ else:
 # -------------------------
 # DATA FILTERING LOGIC
 # -------------------------
+
+
 def apply_filters(df):
     if selected_schools:
         return df[df['school'].isin(selected_schools)]
@@ -89,7 +68,6 @@ tab_overview, tab_numeracy, tab_reading = st.tabs([
     "🧮 Numeracy Analysis",
     "📖 Reading Analysis"
 ])
-
 # -------------------------
 # OVERVIEW TAB: Enhanced visual summary using filtered data
 # -------------------------
@@ -115,13 +93,13 @@ with tab_overview:
 
     # Display Overall Average Performance Summary
     st.subheader("⭐ Average Performance Summary")
-    st.plotly_chart(overview_results["fig_performance"], use_container_width=True, key="overview_performance")
+    st.plotly_chart(overview_results["fig_performance"], use_container_width=True)
 
     st.markdown("---")
 
     # Display School Performance Comparison (Competency by School)
     st.subheader("🏆 Competency Comparison Across Schools")
-    st.plotly_chart(overview_results["fig_summary"], use_container_width=True, key="overview_summary")
+    st.plotly_chart(overview_results["fig_summary"], use_container_width=True)
 
     st.markdown("---")
 
@@ -129,21 +107,21 @@ with tab_overview:
     st.subheader("👥 Population Breakdown")
     row1_col1, row1_col2 = st.columns([2, 3])
     with row1_col1:
-        st.plotly_chart(overview_results["fig_gender"], use_container_width=True, key="overview_gender")
+        st.plotly_chart(overview_results["fig_gender"], use_container_width=True)
     with row1_col2:
-        st.plotly_chart(overview_results["fig_grade"], use_container_width=True, key="overview_grade")
+        st.plotly_chart(overview_results["fig_grade"], use_container_width=True)
 
     st.markdown("---")
 
     # Display Age Distribution
     st.subheader("⏳ Age Distribution")
-    st.plotly_chart(overview_results["fig_age"], use_container_width=True, key="overview_age")
+    st.plotly_chart(overview_results["fig_age"], use_container_width=True)
     
 # -------------------------
-# NUMERACY TAB
+# NUMERACY TAB (remains largely the same)
 # -------------------------
 with tab_numeracy:
-    st.header("🧮 Numeracy Skills Analysis")
+    st.header("Numeracy Skills Analysis")
 
     numeracy_analysis = sa.numeracy_analysis(df_filtered, sa.numeracy_ids)
     plots = sa.plot_numeracy_results(numeracy_analysis)
@@ -161,24 +139,24 @@ with tab_numeracy:
         st.markdown(f"**🏫 Selected Schools:**<br>{school_text}", unsafe_allow_html=True)
 
     st.subheader("Task Completion Rates")
-    st.plotly_chart(plots['fig_overall'], use_container_width=True, key="num_overall")
+    st.plotly_chart(plots['fig_overall'], use_container_width=True)
 
     st.subheader("Performance by Gender")
-    st.plotly_chart(plots['fig_gender'], use_container_width=True, key="num_gender")
+    st.plotly_chart(plots['fig_gender'], use_container_width=True)
 
     if plots['fig_age']:
         st.subheader("Age-wise Progression")
-        st.plotly_chart(plots['fig_age'], use_container_width=True, key="num_age")
+        st.plotly_chart(plots['fig_age'], use_container_width=True)
 
     if plots['fig_grade']:
         st.subheader("Grade-level Performance")
-        st.plotly_chart(plots['fig_grade'], use_container_width=True, key="num_grade")
+        st.plotly_chart(plots['fig_grade'], use_container_width=True)
 
 # -------------------------
 # READING TAB: Separate Sub-Tabs for English & Nepali
 # -------------------------
 with tab_reading:
-    st.header("📖 Reading Proficiency Analysis")
+    st.header("Reading Proficiency Analysis")
 
     # Display Summary Metrics in two columns with Unicode icons
     col1, col2 = st.columns(2)
@@ -211,18 +189,18 @@ with tab_reading:
         reading_plots_eng = sa.plot_reading_results(eng_res, df_filtered)
         
         # Display Overall Reading Performance
-        st.plotly_chart(reading_plots_eng["fig_overall"], use_container_width=True, key="eng_overall")
+        st.plotly_chart(reading_plots_eng["fig_overall"], use_container_width=True,key="eng_overall")
         
         # Display Gender Breakdown
-        st.plotly_chart(reading_plots_eng["fig_gender"], use_container_width=True, key="eng_gender")
+        st.plotly_chart(reading_plots_eng["fig_gender"], use_container_width=True,key="eng_gender")
         
         # Display Age Breakdown (if available)
         if reading_plots_eng["fig_age"]:
-            st.plotly_chart(reading_plots_eng["fig_age"], use_container_width=True, key="eng_age")
+            st.plotly_chart(reading_plots_eng["fig_age"], use_container_width=True,key="eng_age")
         
         # Display Grade Breakdown (if available)
         if reading_plots_eng["fig_grade"]:
-            st.plotly_chart(reading_plots_eng["fig_grade"], use_container_width=True, key="eng_grade")
+            st.plotly_chart(reading_plots_eng["fig_grade"], use_container_width=True,key="eng_grade")
 
     # -------------------------
     # Nepali Reading Analysis
@@ -237,15 +215,16 @@ with tab_reading:
         reading_plots_nep = sa.plot_reading_results(nep_res, df_filtered)
         
         # Display Overall Reading Performance
-        st.plotly_chart(reading_plots_nep["fig_overall"], use_container_width=True, key="nep_overall")
+        st.plotly_chart(reading_plots_nep["fig_overall"], use_container_width=True,key="nep_overall")
         
         # Display Gender Breakdown
-        st.plotly_chart(reading_plots_nep["fig_gender"], use_container_width=True, key="nep_gender")
+        st.plotly_chart(reading_plots_nep["fig_gender"], use_container_width=True,key="nep_gender")
         
         # Display Age Breakdown (if available)
         if reading_plots_nep["fig_age"]:
-            st.plotly_chart(reading_plots_nep["fig_age"], use_container_width=True, key="nep_age")
+            st.plotly_chart(reading_plots_nep["fig_age"], use_container_width=True,key="nep_age")
         
         # Display Grade Breakdown (if available)
         if reading_plots_nep["fig_grade"]:
-            st.plotly_chart(reading_plots_nep["fig_grade"], use_container_width=True, key="nep_grade")
+            st.plotly_chart(reading_plots_nep["fig_grade"], use_container_width=True,key="nep_grade")
+
